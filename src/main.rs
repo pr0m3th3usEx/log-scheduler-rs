@@ -7,10 +7,16 @@ mod scheduler;
 
 async fn run(duration: Duration) {
     println!("Schedule duration: {:?}\nRunning...", duration);
-    let mut scheduler = Scheduler::new(duration);
+    // Demonstrating how to store an asynchronous closure to a struct and use it in asynchronous context
+    // The result is awaited after being received from the Stream
+    let mut scheduler = Scheduler::new(duration, |time_elapsed| {
+        Box::pin(async move {
+            println!("New tick: {}s", time_elapsed);
+        })
+    });
 
-    while let Some(time_elapsed) = scheduler.next().await {
-        println!("New tick: {}s", time_elapsed);
+    while let Some(fut) = scheduler.next().await {
+        fut.await;
     }
 }
 
