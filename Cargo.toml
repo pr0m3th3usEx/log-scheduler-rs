@@ -4,4 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+clap = "4.5.9"
 futures = "0.3.30"
+smol = "2.0.0"
