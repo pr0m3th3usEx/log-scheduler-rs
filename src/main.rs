@@ -1,7 +1,17 @@
 use std::time::Duration;
 
+use scheduler::Scheduler;
+use smol::stream::StreamExt;
+
+mod scheduler;
+
 async fn run(duration: Duration) {
-    println!("Schedule duration: {:?}", duration);
+    println!("Schedule duration: {:?}\nRunning...", duration);
+    let mut scheduler = Scheduler::new(duration);
+
+    while let Some(time_elapsed) = scheduler.next().await {
+        println!("New tick: {}s", time_elapsed);
+    }
 }
 
 fn main() {
