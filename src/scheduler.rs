@@ -1,11 +1,12 @@
 use std::{
-    sync::{Arc, Mutex, RwLock},
+    pin::Pin,
+    sync::{Arc, Mutex},
     task::{Poll, Waker},
     thread,
     time::Duration,
 };
 
-use futures::Stream;
+use futures::{future::BoxFuture, Future, Stream};
 
 #[derive(Debug, Default)]
 struct SharedState {
@@ -16,11 +17,15 @@ struct SharedState {
 
 pub struct Scheduler {
     delay: Duration,
+    callback: Box<dyn Fn(u64) -> Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
     shared_state: Arc<Mutex<SharedState>>,
 }
 
 impl Scheduler {
-    pub fn new(delay: Duration) -> Self {
+    pub fn new(
+        delay: Duration,
+        cb: impl Fn(u64) -> Pin<Box<dyn Future<Output = ()> + Send>> + 'static,
+    ) -> Self {
         let state = Arc::new(Mutex::new(SharedState::default()));
 
         let thread_shared_state = state.clone();
@@ -36,13 +41,14 @@ impl Scheduler {
 
         Self {
             delay,
+            callback: Box::new(cb),
             shared_state: state,
         }
     }
 }
 
 impl Stream for Scheduler {
-    type Item = u64;
+    type Item = BoxFuture<'static, ()>;
 
     fn poll_next(
         self: std::pin::Pin<&mut Self>,
@@ -57,7 +63,7 @@ impl Stream for Scheduler {
             true => {
                 state.total = state.total + self.delay.as_secs();
                 state.should_tick = false;
-                Poll::Ready(Some(state.total))
+                Poll::Ready(Some((self.callback)(state.total)))
             }
         }
     }
